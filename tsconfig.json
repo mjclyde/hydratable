@@ -4,7 +4,6 @@
     "target": "ES6",
     "experimentalDecorators": true,
     "outDir": "./dist",
-    "sourceRoot": "./src",
     "sourceMap": true,
     "declaration": true,
     "esModuleInterop": true,

@@ -2,14 +2,17 @@
   "name": "hydratable",
   "version": "1.0.0",
   "description": "Serialize/Deserialize your JSON objects",
-  "main": "index.js",
+  "main": "dist/hydrate.js",
+  "types": "dist/hydrate.d.ts",
   "scripts": {
     "build": "tsc",
+    "build:prod": "tsc -p tsconfig.prod.json",
     "test": "nyc mocha --colors",
     "test:watch": "nyc mocha -w --colors",
     "test:debug": "nyc mocha -w --colors --inspect-brk=0.0.0.0",
     "lint": "eslint -c .eslintrc --ext .ts src/",
-    "lint:fix": "eslint --fix -c .eslintrc --ext .ts src/"
+    "lint:fix": "eslint --fix -c .eslintrc --ext .ts src/",
+    "deploy": "rm -rf dist && npm run build:prod && npm publish"
   },
   "author": "Matt Clyde",
   "repository": {
