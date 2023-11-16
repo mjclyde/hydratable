@@ -12,7 +12,7 @@
     "skipLibCheck": true,
     "types": ["node", "mocha"]
   },
-  "include": ["./src/**/*.ts"],
+  "include": ["./src/**/*.ts", "./test/**/*.ts"],
   "ts-node": {
     "files": true
   }

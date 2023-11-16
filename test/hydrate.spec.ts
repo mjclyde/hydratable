@@ -184,7 +184,7 @@ describe('Hydrate', () => {
     }
 
     class Parent extends Hydratable<ParentModel> implements ParentModel {
-      @hy(Thing, { array: true }) things!: Thing[];
+      @hy('array', { arrayElementType: Thing }) things!: Thing[];
     }
 
     it('should be able to hydrate class with sub class list inside ', () => {
@@ -229,13 +229,13 @@ describe('Hydrate', () => {
       assert.isTrue(a instanceof FunThing);
       const json = a.toJSON();
       assert.isFalse(json instanceof FunThing);
-      assert.isTrue(typeof json.date === 'string');
+      assert.isTrue(json.date instanceof Date);
       assert.equal(a.date.getTime(), new Date(json.date).getTime());
       assert.equal(a.number, json.number);
       assert.equal(a.string, json.string);
       assert.equal(a.bool, json.bool);
       assert.equal(Object.keys(a.object).length, Object.keys(json.object).length);
-      assert.isTrue(typeof json.object.date === 'string');
+      assert.isTrue(json.object.date instanceof Date);
       assert.equal(a.object.date.getTime(), new Date(json.object.date).getTime());
       assert.equal(a.object.number, json.object.number);
       json.object.number = 11;
@@ -290,6 +290,162 @@ describe('Hydrate', () => {
       const file = new File({ data: [1, 2, 3, 4, 5] as any });
       assert.isTrue(file.data instanceof Buffer);
     });
+  });
+
+  describe('Diff', () => {
+    interface DeviceModel {
+      id: number;
+      coords: number[];
+    }
+
+    class Device extends Hydratable<DeviceModel> implements DeviceModel {
+      @hy('number') id!: number;
+      @hy('array', { arrayElementType: 'number' }) coords!: number[];
+    }
+    interface MeterModel {
+      utilityTypeId: number;
+      imr: number;
+      multiplier: number;
+      device: DeviceModel;
+      updatedAt?: Date;
+    }
+
+    class Meter extends Hydratable<MeterModel> implements MeterModel {
+      @hy('number') utilityTypeId!: number;
+      @hy('number') imr!: number;
+      @hy('number') multiplier!: number;
+      @hy(Device) device!: Device;
+      @hy('date') updatedAt?: Date;
+    }
+    interface UnitModel {
+      name: string;
+      createdAt: Date;
+      meters: MeterModel[];
+    }
+
+    class Unit extends Hydratable<UnitModel> implements UnitModel {
+      @hy('string') name!: string;
+      @hy('date') createdAt!: Date;
+      @hy('array', { arrayElementType: Meter }) meters!: MeterModel[];
+    }
+
+    it('Should diff properly when adding fields of objects within array field', () => {
+      const before: UnitModel = {
+        name: 'U1',
+        createdAt: new Date(),
+        meters: [
+          {
+            utilityTypeId: 1,
+            imr: 100,
+            multiplier: 1,
+            device: { id: 0xBB000001, coords: [123, 234] },
+          },
+          {
+            utilityTypeId: 2,
+            imr: 200,
+            multiplier: 10,
+            device: { id: 0xBB000002, coords: [123, 234] },
+          },
+        ],
+      };
+      const after: UnitModel = {
+        ...before,
+      };
+      after.meters = [
+        { ...before.meters[0] },
+        { ...before.meters[1], updatedAt: new Date(Date.UTC(2023, 10, 16)) },
+      ];
+      const diff = new Unit(before).diff(new Unit(after));
+      assert.deepEqual(diff, {
+        'meters': {
+          '1': {
+            'updatedAt': [undefined, new Date(Date.UTC(2023, 10, 16))],
+          }
+        }
+      });
+    });
+
+    it('Should diff properly when changing fields of objects within array field', () => {
+      const before: UnitModel = {
+        name: 'U1',
+        createdAt: new Date(),
+        meters: [
+          {
+            utilityTypeId: 1,
+            imr: 100,
+            multiplier: 1,
+            device: { id: 0xBB000001, coords: [123, 234] },
+          },
+          {
+            utilityTypeId: 2,
+            imr: 200,
+            multiplier: 10,
+            device: { id: 0xBB000002, coords: [123, 234] },
+          },
+        ],
+      };
+      const after: UnitModel = {
+        ...before,
+      };
+      after.meters = [
+        { ...before.meters[0] },
+        { ...before.meters[1], device: { id: 0xBB000002, coords: [123, 123] } },
+      ];
+      const diff = new Unit(before).diff(new Unit(after));
+      assert.deepEqual(diff, {
+        meters: {
+          '1': {
+            'device': {
+              'coords': {
+                '1': [234, 123]
+              }
+            }
+          },
+        },
+      });
+    });
+
+    it('Should diff properly when adding new element to array field', () => {
+      const before: UnitModel = {
+        name: 'U1',
+        createdAt: new Date(),
+        meters: [
+          {
+            utilityTypeId: 1,
+            imr: 100,
+            multiplier: 1,
+            device: { id: 0xBB000001, coords: [123, 234] },
+          },
+          {
+            utilityTypeId: 2,
+            imr: 200,
+            multiplier: 10,
+            device: { id: 0xBB000002, coords: [123, 234] },
+          },
+        ],
+      };
+      const after: UnitModel = {
+        ...before,
+        meters: [
+          ...before.meters,
+          {
+            utilityTypeId: 3,
+            imr: 50,
+            multiplier: 1,
+            device: { id: 0xBB000003, coords: [123, 234] },
+          }
+        ]
+      };
+      const diff = new Unit(before).diff(new Unit(after));
+      assert.deepEqual(diff, {
+        meters: {
+          '2': [undefined, { ...after.meters[2] }],
+        },
+      });
+    });
+
+
+
   });
 
 });
