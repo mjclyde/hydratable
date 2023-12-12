@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Buffer } from 'buffer';
 
-export type HydratableType = 'number' | 'date' | 'bool' | 'string' | 'object' | { new(...args: any): any };
+export type HydratableType = 'number' | 'date' | 'bool' | 'string' | 'object' | 'array' | { new(...args: any): any };
 
 interface ModelMapValue {
   type: HydratableType;
@@ -10,10 +10,12 @@ interface ModelMapValue {
 
 const ModelMap = new Map<string, Map<string, ModelMapValue>>();
 
+export type Differences = { [key: string]: [unknown, unknown] | Differences };
+
 export interface HydrateOptions {
   allowNull?: boolean;
   incomingFieldName?: string;
-  array?: boolean;
+  arrayElementType?: HydratableType;
 }
 
 export function hy(type: HydratableType, options: HydrateOptions = {}) {
@@ -39,6 +41,9 @@ export class Hydratable<T> {
     const getJSON = (thing: any): any => {
       if (thing instanceof Buffer) {
         return thing.toString('base64');
+      }
+      if (thing instanceof Date) {
+        return thing;
       }
       if (thing?.toJSON instanceof Function) {
         return thing.toJSON();
@@ -67,6 +72,107 @@ export class Hydratable<T> {
     return json as T;
   }
 
+  diff(other: Hydratable<T>, skip: { [field: string]: true } = {}): Differences {
+    const diff: Differences = {};
+    this.forEachHyProp((key, propInfo) => {
+      if (skip[key]) { return; }
+      const field = (this as Record<string, any>)[key];
+      const compareField = other ? (other as any)[key] : undefined;
+      if (field && propInfo.type === 'array' && compareField) {
+        const leftToRight = this.diffArrays(field, compareField);
+        const rightToLeft = this.diffArrays(compareField, field, true);
+        if (Object.keys(leftToRight).length || Object.keys(rightToLeft).length) {
+          diff[key] = { ...leftToRight, ...rightToLeft };
+        }
+      } else if (field instanceof Hydratable && compareField instanceof Hydratable) {
+        const subDiff = field.diff(compareField);
+        if (Object.keys(subDiff).length) {
+          diff[key] = subDiff;
+        }
+      } else if (propInfo.type === 'date') {
+        if (!this.areDatesEqual(field, compareField)) {
+          diff[key] = [field, compareField];
+        }
+      } else if (propInfo.type === 'object') {
+        const leftToRight = this.diffObject(field, compareField);
+        const rightToLeft = this.diffObject(compareField, field, true);
+        if (Object.keys(leftToRight).length || Object.keys(rightToLeft).length) {
+          diff[key] = { ...leftToRight, ...rightToLeft };
+        }
+      } else if (field !== compareField) {
+        diff[key] = [field, compareField];
+      }
+    });
+    return diff;
+  }
+
+  private areDatesEqual(a?: Date, b?: Date) {
+    if (!a && !b) { return true; }
+    else if ((a && !b) || (!a && b)) { return false; }
+    const areEqual = a?.getTime() === b?.getTime()
+    return areEqual;
+  }
+
+  private diffArrays(a?: any[], b?: any[], inverse?: boolean): Differences {
+    const diff: Differences = {};
+    for (let i = 0; i < (a || []).length; i++) {
+      const aEl = a ? a[i] : undefined;
+      const bEl = b ? b[i] : undefined;
+      if (aEl instanceof Hydratable && bEl instanceof Hydratable) {
+        const subDiff = inverse ? bEl.diff(aEl) : aEl.diff(bEl);
+        if (Object.keys(subDiff).length) {
+          diff[i] = subDiff;
+        }
+      } else if (this.isArray(aEl) && this.isArray(bEl)) {
+        const leftToRight = this.diffArrays(aEl, bEl);
+        const rightToLeft = this.diffArrays(bEl, aEl, true);
+        if (Object.keys(leftToRight).length || Object.keys(rightToLeft).length) {
+          diff[i] = { ...leftToRight, ...rightToLeft };
+        }
+      } else if (this.isObject(aEl) && this.isObject(bEl)) {
+        const leftToRight = this.diffObject(aEl, bEl);
+        const rightToLeft = this.diffObject(bEl, aEl, true);
+        if (Object.keys(leftToRight).length || Object.keys(rightToLeft).length) {
+          diff[i] = { ...leftToRight, ...rightToLeft };
+        }
+      } else if (aEl !== bEl) {
+        diff[i] = inverse ? [bEl, aEl] : [aEl, bEl];
+      }
+    }
+
+    return diff;
+  }
+
+  private diffObject(a?: Record<string, unknown>, b?: Record<string, unknown>, inverse?: boolean) {
+    const diff: Differences = {};
+    for (const key in a) {
+      const field = a[key];
+      const compareField = b?.[key];
+      if (field instanceof Hydratable && compareField instanceof Hydratable) {
+        const subDiff = inverse ? compareField.diff(field) : field.diff(compareField);
+        if (Object.keys(subDiff).length) {
+          diff[key] = subDiff;
+        }
+      } if (this.isObject(field) && this.isObject(compareField)) {
+        const leftToRight = this.diffObject(field, compareField);
+        const rightToLeft = this.diffObject(compareField, field, true);
+        if (Object.keys(leftToRight).length || Object.keys(rightToLeft).length) {
+          diff[key] = { ...leftToRight, ...rightToLeft };
+        }
+      } else if (this.isArray(field) && this.isArray(compareField)) {
+        const leftToRight = this.diffArrays(field, compareField);
+        const rightToLeft = this.diffArrays(compareField, field, true);
+        if (Object.keys(leftToRight).length || Object.keys(rightToLeft).length) {
+          diff[key] = { ...leftToRight, ...rightToLeft };
+        }
+      } else if (field !== compareField) {
+        diff[key] = inverse ? [compareField, field] : [field, compareField];
+      }
+    }
+
+    return diff;
+  }
+
   private hydrate(data?: any) {
     if (!data || !Object.keys(data).length) { return; }
     this.forEachHyProp((key, value) => {
@@ -89,6 +195,8 @@ export class Hydratable<T> {
         return this.setString(key, data[incomingKey], options);
       case 'object':
         return this.setObject(key, data[incomingKey], options);
+      case 'array':
+        return this.setArray(key, data[incomingKey], options);
     }
 
     if (type instanceof Function && data[incomingKey] !== undefined) {
@@ -98,11 +206,7 @@ export class Hydratable<T> {
           this.setOnThis(key, copy);
         }
       } else {
-        if (options.array) {
-          this.setOnThis(key, data[incomingKey].map((d: unknown) => new type(d)));
-        } else {
-          this.setOnThis(key, new type(data[incomingKey]))
-        }
+        this.setOnThis(key, new type(data[incomingKey]))
       }
     }
   }
@@ -157,6 +261,16 @@ export class Hydratable<T> {
     this.setOnThis(key, value);
   }
 
+  private setArray(key: string, value: any, options: HydrateOptions) {
+    if (!options.allowNull && value === null) { return; }
+    const type = options.arrayElementType;
+    if (type && type instanceof Function) {
+      this.setOnThis(key, this.copyArray(value).map(el => new type(el)));
+    } else {
+      this.setOnThis(key, this.copyArray(value))
+    }
+  }
+
   private setObject(key: string, value: any, options: HydrateOptions) {
     if (!options.allowNull && value === null) { return; }
     this.setOnThis(key, this.copyObject(value));
@@ -169,6 +283,20 @@ export class Hydratable<T> {
     } else if (Array.isArray(value) || value instanceof Buffer) {
       return Buffer.from(value);
     }
+  }
+
+  private copyArray(value: unknown) {
+    const copy: Array<unknown> = [];
+    if (Array.isArray(value)) {
+      for (const el of value) {
+        if (this.isDate(el)) {
+          copy.push(new Date(el as Date));
+        } else {
+          copy.push(this.isObject(el) ? this.copyObject(el) : this.isArray(el) ? this.copyArray(el) : el)
+        }
+      }
+    }
+    return copy;
   }
 
   private copyObject(obj: object) {
@@ -205,6 +333,10 @@ export class Hydratable<T> {
 
   private isObject(thing: unknown): thing is Record<string, unknown> {
     return typeof thing === 'object' && thing !== null && !Array.isArray(thing);
+  }
+
+  private isArray(thing: unknown): thing is Array<unknown> {
+    return !!thing && Array.isArray(thing);
   }
 
   private isDate(value: unknown): value is Date | string {
