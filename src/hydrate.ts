@@ -16,6 +16,7 @@ export interface HydrateOptions {
   allowNull?: boolean;
   incomingFieldName?: string;
   arrayElementType?: HydratableType;
+  dictionaryValueType?: HydratableType;
 }
 
 export function hy(type: HydratableType, options: HydrateOptions = {}) {
@@ -273,6 +274,12 @@ export class Hydratable<T> {
 
   private setObject(key: string, value: any, options: HydrateOptions) {
     if (!options.allowNull && value === null) { return; }
+    const type = options.dictionaryValueType;
+    if (type && type instanceof Function) {
+      Object.keys(value).forEach(key => {
+        value[key] = new type(value[key]);
+      });
+    }
     this.setOnThis(key, this.copyObject(value));
   }
 
