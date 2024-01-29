@@ -279,7 +279,6 @@ export class Hydratable<T> {
       Object.keys(value).forEach(key => {
         value[key] = new type(value[key]);
       });
-      this.setOnThis(key, this.copyObject(value));
     }
     this.setOnThis(key, this.copyObject(value));
   }
