@@ -1,6 +1,6 @@
 {
   "name": "hydratable",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Serialize/Deserialize your JSON objects",
   "main": "dist/hydrate.js",
   "types": "dist/hydrate.d.ts",
