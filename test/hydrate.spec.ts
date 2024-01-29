@@ -448,4 +448,42 @@ describe('Hydrate', () => {
 
   });
 
+  describe('Object', () => {
+    enum SubscriptionType {
+      CELLULAR = 'CELLULAR',
+      STORAGE = 'STORAGE',
+    }
+
+    interface SubscriptionModel {
+      enabled: boolean;
+      active: boolean;
+      enabledOn?: Date;
+      disabledOn?: Date;
+    }
+
+    class Subscription extends Hydratable<SubscriptionModel> implements SubscriptionModel {
+      @hy('bool') enabled!: boolean;
+      @hy('bool') active!: boolean;
+      @hy('date') enabledOn?: Date;
+      @hy('date') disabledOn?: Date;
+    }
+    interface BillingCompanyModel {
+      subscriptions: { [key in SubscriptionType]: SubscriptionModel };
+    }
+
+    class BillingCompany extends Hydratable<BillingCompanyModel> implements BillingCompanyModel {
+      @hy('object', { dictionaryValueType: Subscription }) subscriptions!: { [key in SubscriptionType]: Subscription };
+    }
+
+    it('Should be able to have a Hydratable dictionary', () => {
+      const bc = new BillingCompany({
+        subscriptions: {
+          STORAGE: { enabled: true, active: true, enabledOn: new Date().toISOString() as any },
+          CELLULAR: { enabled: true, active: true },
+        },
+      });
+      assert.isTrue(bc.subscriptions.STORAGE.enabledOn instanceof Date);
+    });
+  });
+
 });
