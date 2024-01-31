@@ -171,27 +171,44 @@ describe('Hydrate', () => {
 
   describe('Inheritance', () => {
 
+    interface NestedThingModel {
+      date: Date;
+    }
+
     interface ThingModel {
       foo: string;
+      nested: { [key: string]: NestedThingModel };
+    }
+
+    class NestedThing extends Hydratable<NestedThingModel> implements NestedThingModel {
+      @hy('date') date!: Date;
     }
 
     class Thing extends Hydratable<ThingModel> implements ThingModel {
       @hy('string') foo!: string;
+      @hy('object', { dictionaryValueType: NestedThing }) nested!: { [key: string]: NestedThingModel }
     }
 
     interface ParentModel {
       things: ThingModel[];
+      thingDict: { [key: string]: ThingModel }
     }
 
     class Parent extends Hydratable<ParentModel> implements ParentModel {
       @hy('array', { arrayElementType: Thing }) things!: Thing[];
+      @hy('object', { dictionaryValueType: Thing }) thingDict!: { [key: string]: ThingModel; };
     }
 
     it('should be able to hydrate class with sub class list inside ', () => {
-      const p = new Parent({ things: [{ foo: 'bar' }] });
+      const date = new Date(Date.UTC(2024, 0, 30));
+      const p = new Parent({ things: [{ foo: 'bar', nested: {} }], thingDict: { a: { foo: 'baz', nested: { b: { date: date.toISOString() as any } } } } });
       assert.equal(p.things[0].foo, 'bar');
       assert.isTrue(p instanceof Parent);
       assert.isTrue(p.things[0] instanceof Thing);
+      assert.isEmpty(p.things[0].nested);
+      assert.isTrue(p.thingDict['a'] instanceof Thing);
+      assert.isTrue(p.thingDict['a'].nested['b'] instanceof NestedThing);
+      assert.isTrue(p.thingDict['a'].nested['b'].date instanceof Date);
       const json = p.toJSON();
       json.things[0].foo = 'baz';
       assert.notEqual(p.things[0].foo, json.things[0].foo);

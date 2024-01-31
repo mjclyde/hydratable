@@ -83,7 +83,7 @@ export class Hydratable<T> {
         const leftToRight = this.diffArrays(field, compareField);
         const rightToLeft = this.diffArrays(compareField, field, true);
         if (Object.keys(leftToRight).length || Object.keys(rightToLeft).length) {
-          diff[key] = { ...leftToRight, ...rightToLeft };
+          diff[key] = { ...rightToLeft, ...leftToRight };
         }
       } else if (field instanceof Hydratable && compareField instanceof Hydratable) {
         const subDiff = field.diff(compareField);
@@ -98,7 +98,7 @@ export class Hydratable<T> {
         const leftToRight = this.diffObject(field, compareField);
         const rightToLeft = this.diffObject(compareField, field, true);
         if (Object.keys(leftToRight).length || Object.keys(rightToLeft).length) {
-          diff[key] = { ...leftToRight, ...rightToLeft };
+          diff[key] = { ...rightToLeft, ...leftToRight };
         }
       } else if (field !== compareField) {
         diff[key] = [field, compareField];
@@ -128,13 +128,13 @@ export class Hydratable<T> {
         const leftToRight = this.diffArrays(aEl, bEl);
         const rightToLeft = this.diffArrays(bEl, aEl, true);
         if (Object.keys(leftToRight).length || Object.keys(rightToLeft).length) {
-          diff[i] = { ...leftToRight, ...rightToLeft };
+          diff[i] = inverse ? { ...leftToRight, ...rightToLeft } : { ...rightToLeft, ...leftToRight };
         }
       } else if (this.isObject(aEl) && this.isObject(bEl)) {
         const leftToRight = this.diffObject(aEl, bEl);
         const rightToLeft = this.diffObject(bEl, aEl, true);
         if (Object.keys(leftToRight).length || Object.keys(rightToLeft).length) {
-          diff[i] = { ...leftToRight, ...rightToLeft };
+          diff[i] = inverse ? { ...leftToRight, ...rightToLeft } : { ...rightToLeft, ...leftToRight };
         }
       } else if (aEl !== bEl) {
         diff[i] = inverse ? [bEl, aEl] : [aEl, bEl];
@@ -158,13 +158,13 @@ export class Hydratable<T> {
         const leftToRight = this.diffObject(field, compareField);
         const rightToLeft = this.diffObject(compareField, field, true);
         if (Object.keys(leftToRight).length || Object.keys(rightToLeft).length) {
-          diff[key] = { ...leftToRight, ...rightToLeft };
+          diff[key] = inverse ? { ...leftToRight, ...rightToLeft } : { ...rightToLeft, ...leftToRight };
         }
       } else if (this.isArray(field) && this.isArray(compareField)) {
         const leftToRight = this.diffArrays(field, compareField);
         const rightToLeft = this.diffArrays(compareField, field, true);
         if (Object.keys(leftToRight).length || Object.keys(rightToLeft).length) {
-          diff[key] = { ...leftToRight, ...rightToLeft };
+          diff[key] = inverse ? { ...leftToRight, ...rightToLeft } : { ...rightToLeft, ...leftToRight };
         }
       } else if (field !== compareField) {
         diff[key] = inverse ? [compareField, field] : [field, compareField];
@@ -276,8 +276,8 @@ export class Hydratable<T> {
     if (!options.allowNull && value === null) { return; }
     const type = options.dictionaryValueType;
     if (type && type instanceof Function) {
-      Object.keys(value).forEach(key => {
-        value[key] = new type(value[key]);
+      Object.keys(value).forEach(k => {
+        value[k] = new type(value[k]);
       });
     }
     this.setOnThis(key, this.copyObject(value));
@@ -314,7 +314,7 @@ export class Hydratable<T> {
       if (this.isDate(value)) {
         copy[key] = new Date(value as Date | string);
       } else {
-        copy[key] = this.isObject(value) ? this.copyObject(value) : value;
+        copy[key] = (this.isObject(value) && !(value instanceof Hydratable)) ? this.copyObject(value) : value;
       }
     }
     return copy;
