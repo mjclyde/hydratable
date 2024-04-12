@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Buffer } from 'buffer';
 
-export type HydratableType = 'number' | 'date' | 'bool' | 'string' | 'object' | 'array' | { new(...args: any): any };
+export type HydratableType = 'number' | 'date' | 'bool' | 'string' | 'object' | 'array' | { new(...args: any): any } | { factory: (model: any) => any };
 
 interface ModelMapValue {
   type: HydratableType;
@@ -209,6 +209,8 @@ export class Hydratable<T> {
       } else {
         this.setOnThis(key, new type(data[incomingKey]))
       }
+    } else if (type && 'factory' in type && type.factory instanceof Function && data[incomingKey] !== undefined) {
+      this.setOnThis(key, type.factory(data[incomingKey]));
     }
   }
 
@@ -267,6 +269,8 @@ export class Hydratable<T> {
     const type = options.arrayElementType;
     if (type && type instanceof Function) {
       this.setOnThis(key, this.copyArray(value).map(el => new type(el)));
+    } else if (typeof type === 'object' && 'factory' in type && type.factory instanceof Function) {
+      this.setOnThis(key, this.copyArray(value).map(el => type.factory(el)));
     } else {
       this.setOnThis(key, this.copyArray(value))
     }
@@ -278,6 +282,10 @@ export class Hydratable<T> {
     if (type && type instanceof Function) {
       Object.keys(value).forEach(k => {
         value[k] = new type(value[k]);
+      });
+    } else if (typeof type === 'object' && 'factory' in type && type.factory instanceof Function) {
+      Object.keys(value).forEach(k => {
+        value[k] = type.factory(value[k]);
       });
     }
     this.setOnThis(key, this.copyObject(value));
