@@ -1,18 +1,32 @@
 {
   "compilerOptions": {
-    "module": "commonjs",
-    "target": "ES6",
-    "experimentalDecorators": true,
-    "outDir": "./dist",
-    "sourceMap": true,
+    "lib": [
+      "ESNext"
+    ],
     "declaration": true,
-    "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true,
+    "declarationDir": "./dist/types",
     "strict": true,
+    "esModuleInterop": true,
     "skipLibCheck": true,
-    "types": ["node", "mocha"]
+    "moduleResolution": "node",
+    "baseUrl": ".",
+    "rootDir": "./src",
+    "types": [
+      "node",
+      "mocha"
+    ],
+    "experimentalDecorators": true,
+    "strictPropertyInitialization": false,
+    "useDefineForClassFields": false
   },
-  "include": ["./src/**/*.ts", "./test/**/*.ts"],
+  "include": [
+    "./src",
+    "./test"
+  ],
+  "exclude": [
+    "dist",
+    "node_modules"
+  ],
   "ts-node": {
     "files": true
   }
