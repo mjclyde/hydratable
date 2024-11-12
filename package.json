@@ -1,18 +1,31 @@
 {
   "name": "hydratable",
-  "version": "1.2.1",
+  "version": "1.3.0",
   "description": "Serialize/Deserialize your JSON objects",
-  "main": "dist/hydrate.js",
-  "types": "dist/hydrate.d.ts",
+  "main": "./dist/cjs/hydrate.js",
+  "module": "./dist/esm/hydrate.mjs",
+  "types": "./dist/types/hydrate.d.ts",
+  "exports": {
+    ".": {
+      "require": "./dist/cjs/hydrate.js",
+      "import": "./dist/esm/hydrate.mjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
-    "build": "tsc",
-    "build:prod": "tsc -p tsconfig.prod.json",
+    "build:cjs": "tsc -p tsconfig.cjs.json",
+    "build:esm": "tsc -p tsconfig.esm.json && npm run rename:esm",
+    "build": "npm run clean && npm run build:cjs && npm run build:esm",
+    "clean": "rimraf dist",
+    "rename:esm": "/bin/zsh ./scripts/fix-mjs.sh",
     "test": "nyc mocha --colors",
     "test:watch": "nyc mocha -w --colors",
     "test:debug": "nyc mocha -w --colors --inspect-brk=0.0.0.0",
     "lint": "eslint -c .eslintrc --ext .ts src/",
     "lint:fix": "eslint --fix -c .eslintrc --ext .ts src/",
-    "deploy": "rm -rf dist && npm run build:prod && npm publish"
+    "deploy": "rm -rf dist && npm run build && npm publish"
   },
   "author": "Matt Clyde",
   "repository": {

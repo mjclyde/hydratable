@@ -137,7 +137,9 @@ export class Hydratable<T> {
           diff[i] = inverse ? { ...leftToRight, ...rightToLeft } : { ...rightToLeft, ...leftToRight };
         }
       } else if (aEl !== bEl) {
-        diff[i] = inverse ? [bEl, aEl] : [aEl, bEl];
+        const aElJson = aEl instanceof Hydratable ? aEl.toJSON() : aEl;
+        const bElJson = bEl instanceof Hydratable ? bEl.toJSON() : bEl;
+        diff[i] = inverse ? [bElJson, aElJson] : [aElJson, bElJson];
       }
     }
 
@@ -167,7 +169,9 @@ export class Hydratable<T> {
           diff[key] = inverse ? { ...leftToRight, ...rightToLeft } : { ...rightToLeft, ...leftToRight };
         }
       } else if (field !== compareField) {
-        diff[key] = inverse ? [compareField, field] : [field, compareField];
+        const fieldJson = field instanceof Hydratable ? field.toJSON() : field;
+        const compareFieldJson = compareField instanceof Hydratable ? compareField.toJSON() : compareField;
+        diff[key] = inverse ? [compareFieldJson, fieldJson] : [fieldJson, compareFieldJson];
       }
     }
 
