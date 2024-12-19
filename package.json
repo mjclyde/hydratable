@@ -1,6 +1,6 @@
 {
   "name": "hydratable",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "Serialize/Deserialize your JSON objects",
   "main": "./dist/cjs/hydrate.js",
   "module": "./dist/esm/hydrate.mjs",
@@ -8,7 +8,8 @@
   "exports": {
     ".": {
       "require": "./dist/cjs/hydrate.js",
-      "import": "./dist/esm/hydrate.mjs"
+      "import": "./dist/esm/hydrate.mjs",
+      "types": "./dist/types/hydrate.d.ts"
     }
   },
   "files": [
