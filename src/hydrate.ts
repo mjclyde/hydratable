@@ -8,7 +8,6 @@ interface ModelMapValue {
   options: HydrateOptions;
 }
 
-const ModelMap = new Map<string, Map<string, ModelMapValue>>();
 
 export type Differences = { [key: string]: [unknown, unknown] | Differences };
 
@@ -21,16 +20,17 @@ export interface HydrateOptions {
 
 export function hy(type: HydratableType, options: HydrateOptions = {}) {
   return function (target: any, propertyKey: string) {
-    let map = ModelMap.get(target.constructor.name);
+    let map = Hydratable.ModelMap.get(target.constructor.name);
     if (!map) {
       map = new Map();
-      ModelMap.set(target.constructor.name, map);
+      Hydratable.ModelMap.set(target.constructor.name, map);
     }
     map.set(propertyKey, { type, options });
   }
 }
 
 export class Hydratable<T> {
+  static ModelMap = new Map<string, Map<string, ModelMapValue>>()
 
   constructor(data: T) {
     this.hydrate(data);
@@ -338,7 +338,7 @@ export class Hydratable<T> {
     let proto = (this as Record<string, unknown>)['__proto__'];
     do {
       name = proto?.constructor?.name || '';
-      const map = ModelMap.get(name);
+      const map = Hydratable.ModelMap.get(name);
       if (map) {
         map.forEach((value, key) => {
           if (handledFields[key]) { return; }
