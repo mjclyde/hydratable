@@ -1,6 +1,6 @@
 {
   "name": "hydratable",
-  "version": "1.4.2",
+  "version": "1.4.3",
   "description": "Serialize/Deserialize your JSON objects",
   "main": "./dist/cjs/hydrate.js",
   "module": "./dist/esm/hydrate.mjs",
