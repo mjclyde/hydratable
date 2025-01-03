@@ -11,6 +11,11 @@ interface ModelMapValue {
 
 export type Differences = { [key: string]: [unknown, unknown] | Differences };
 
+declare global {
+  // eslint-disable-next-line no-var
+  var HydratableModelMap: Map<string, Map<string, ModelMapValue>>;
+}
+
 export interface HydrateOptions {
   allowNull?: boolean;
   incomingFieldName?: string;
@@ -20,18 +25,19 @@ export interface HydrateOptions {
 
 export function hy(type: HydratableType, options: HydrateOptions = {}) {
   return function (target: any, propertyKey: string) {
-    let map = Hydratable.ModelMap.get(target.constructor.name);
+    if (!global.HydratableModelMap) {
+      global.HydratableModelMap = new Map<string, Map<string, ModelMapValue>>();
+    }
+    let map = global.HydratableModelMap.get(target.constructor.name);
     if (!map) {
       map = new Map();
-      Hydratable.ModelMap.set(target.constructor.name, map);
+      global.HydratableModelMap.set(target.constructor.name, map);
     }
     map.set(propertyKey, { type, options });
   }
 }
 
 export class Hydratable<T> {
-  static ModelMap = new Map<string, Map<string, ModelMapValue>>()
-
   constructor(data: T) {
     this.hydrate(data);
   }
@@ -338,7 +344,7 @@ export class Hydratable<T> {
     let proto = (this as Record<string, unknown>)['__proto__'];
     do {
       name = proto?.constructor?.name || '';
-      const map = Hydratable.ModelMap.get(name);
+      const map = global.HydratableModelMap.get(name);
       if (map) {
         map.forEach((value, key) => {
           if (handledFields[key]) { return; }
