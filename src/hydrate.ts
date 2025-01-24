@@ -52,7 +52,7 @@ export class Hydratable<T> {
       if (thing instanceof Date) {
         return thing;
       }
-      if (thing?.toJSON instanceof Function) {
+      if (thing && thing.toJSON instanceof Function) {
         return thing.toJSON();
       } else if (thing && Array.isArray(thing)) {
         return thing.map(t => getJSON(t));
