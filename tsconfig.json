@@ -1,32 +1,21 @@
 {
   "compilerOptions": {
-    "lib": [
-      "ESNext"
-    ],
+    "lib": ["ESNext"],
+    "target": "ES6",
+    "module": "NodeNext",
     "declaration": true,
-    "declarationDir": "./dist/types",
+    "declarationDir": "./dist",
+    "outDir": "./dist",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "moduleResolution": "node",
-    "baseUrl": ".",
-    "rootDir": "./src",
-    "types": [
-      "node",
-      "mocha"
-    ],
+    "types": ["node", "mocha"],
     "experimentalDecorators": true,
     "strictPropertyInitialization": false,
     "useDefineForClassFields": false
   },
-  "include": [
-    "./src",
-    "./test"
-  ],
-  "exclude": [
-    "dist",
-    "node_modules"
-  ],
+  "include": ["./src", "./test"],
+  "exclude": ["dist", "node_modules"],
   "ts-node": {
     "files": true
   }
