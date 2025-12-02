@@ -8,12 +8,13 @@ interface ModelMapValue {
   options: HydrateOptions;
 }
 
+const HYDRATABLE_ID = Symbol('hydratableId');
 
 export type Differences = { [key: string]: [unknown, unknown] | Differences };
 
 declare global {
   // eslint-disable-next-line no-var
-  var HydratableModelMap: Map<string, Map<string, ModelMapValue>>;
+  var HydratableModelMap: Map<symbol, Map<string, ModelMapValue>>;
 }
 
 export interface HydrateOptions {
@@ -26,12 +27,24 @@ export interface HydrateOptions {
 export function hy(type: HydratableType, options: HydrateOptions = {}) {
   return function (target: any, propertyKey: string) {
     if (!global.HydratableModelMap) {
-      global.HydratableModelMap = new Map<string, Map<string, ModelMapValue>>();
+      global.HydratableModelMap = new Map<symbol, Map<string, ModelMapValue>>();
     }
-    let map = global.HydratableModelMap.get(target.constructor.name);
+    
+    // IMPORTANT: target is the prototype, target.constructor is the class
+    // We need to store the symbol directly on the constructor function itself
+    const constructor = target.constructor;
+    
+    // Get or create unique ID for this specific class constructor
+    // Use Object.prototype.hasOwnProperty to check if THIS constructor has the symbol
+    // (not inherited from parent)
+    if (!Object.prototype.hasOwnProperty.call(constructor, HYDRATABLE_ID)) {
+      constructor[HYDRATABLE_ID] = Symbol(constructor.name);
+    }
+    
+    let map = global.HydratableModelMap.get(constructor[HYDRATABLE_ID]);
     if (!map) {
       map = new Map();
-      global.HydratableModelMap.set(target.constructor.name, map);
+      global.HydratableModelMap.set(constructor[HYDRATABLE_ID], map);
     }
     map.set(propertyKey, { type, options });
   }
@@ -340,20 +353,25 @@ export class Hydratable<T> {
 
   private forEachHyProp(cb: (key: string, value: ModelMapValue) => void) {
     const handledFields: { [fieldName: string]: ModelMapValue } = {};
-    let name = '';
     let proto = (this as Record<string, unknown>)['__proto__'];
+    
     do {
-      name = proto?.constructor?.name || '';
-      const map = global.HydratableModelMap.get(name);
-      if (map) {
-        map.forEach((value, key) => {
-          if (handledFields[key]) { return; }
-          handledFields[key] = value;
-          cb(key, value);
-        });
+      const constructor: any = proto?.constructor;
+      if (!constructor) break;
+      
+      const id = constructor[HYDRATABLE_ID];
+      if (id) {
+        const map = global.HydratableModelMap.get(id);
+        if (map) {
+          map.forEach((value, key) => {
+            if (handledFields[key]) { return; }
+            handledFields[key] = value;
+            cb(key, value);
+          });
+        }
       }
       proto = (proto as Record<string, unknown>)?.['__proto__'];
-    } while (name);
+    } while (proto);
   }
 
   private isObject(thing: unknown): thing is Record<string, unknown> {
